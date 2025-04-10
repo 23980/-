@@ -1,10 +1,10 @@
 # 数据库初始化
 
 -- 创建库
-create database if not exists my_db;
+create database if not exists mianshiwa;
 
 -- 切换库
-use my_db;
+use mianshiwa;
 
 -- 用户表
 create table if not exists user

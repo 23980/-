@@ -1,7 +1,9 @@
 package com.czh.mianshiwa.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.czh.mianshiwa.common.ErrorCode;
@@ -9,21 +11,25 @@ import com.czh.mianshiwa.constant.CommonConstant;
 import com.czh.mianshiwa.exception.ThrowUtils;
 import com.czh.mianshiwa.mapper.QuestionBankQuestionMapper;
 import com.czh.mianshiwa.model.dto.questionbankquestion.QuestionBankQuestionQueryRequest;
+import com.czh.mianshiwa.model.entity.Question;
+import com.czh.mianshiwa.model.entity.QuestionBank;
 import com.czh.mianshiwa.model.entity.QuestionBankQuestion;
 import com.czh.mianshiwa.model.entity.User;
 import com.czh.mianshiwa.model.vo.QuestionBankQuestionVO;
 import com.czh.mianshiwa.model.vo.UserVO;
 import com.czh.mianshiwa.service.QuestionBankQuestionService;
+import com.czh.mianshiwa.service.QuestionBankService;
+import com.czh.mianshiwa.service.QuestionService;
 import com.czh.mianshiwa.service.UserService;
 import com.czh.mianshiwa.utils.SqlUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,7 +37,6 @@ import java.util.stream.Collectors;
 
 /**
  * 题库题目关联服务实现
- *
  */
 @Service
 @Slf4j
@@ -40,24 +45,34 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
     @Resource
     private UserService userService;
 
+    @Resource
+    @Lazy
+    private QuestionService questionService;
+
+    @Resource
+    private QuestionBankService questionBankService;
+
     /**
      * 校验数据
      *
      * @param questionBankQuestion
-     * @param add      对创建的数据进行校验
+     * @param add                  对创建的数据进行校验
      */
     @Override
     public void validQuestionBankQuestion(QuestionBankQuestion questionBankQuestion, boolean add) {
         ThrowUtils.throwIf(questionBankQuestion == null, ErrorCode.PARAMS_ERROR);
-        // todo 从对象中取值
 
-        // 创建数据时，参数不能为空
-        if (add) {
-            // todo 补充校验规则
+        //题目和题库必须存在
+        Long questionId = questionBankQuestion.getQuestionId();
+        if (questionId != null){
+            Question question = questionService.getById(questionId);
+            ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR, "题目不存在");
         }
-        // 修改数据时，有参数则校验
-        // todo 补充校验规则
-
+        Long questionBankId = questionBankQuestion.getQuestionBankId();
+        if (questionBankId != null) {
+            QuestionBank questionBank = questionBankService.getById(questionBankId);
+            ThrowUtils.throwIf(questionBank == null, ErrorCode.NOT_FOUND_ERROR, "题库不存在");
+        }
     }
 
     /**
@@ -75,32 +90,25 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
         // todo 从对象中取值
         Long id = questionBankQuestionQueryRequest.getId();
         Long notId = questionBankQuestionQueryRequest.getNotId();
-        String title = questionBankQuestionQueryRequest.getTitle();
-        String content = questionBankQuestionQueryRequest.getContent();
         String searchText = questionBankQuestionQueryRequest.getSearchText();
+        Long questionBankId = questionBankQuestionQueryRequest.getQuestionBankId();
+        Long questionId = questionBankQuestionQueryRequest.getQuestionId();
+        Long userId = questionBankQuestionQueryRequest.getUserId();
         String sortField = questionBankQuestionQueryRequest.getSortField();
         String sortOrder = questionBankQuestionQueryRequest.getSortOrder();
-        List<String> tagList = questionBankQuestionQueryRequest.getTags();
-        Long userId = questionBankQuestionQueryRequest.getUserId();
+
         // todo 补充需要的查询条件
         // 从多字段中搜索
         if (StringUtils.isNotBlank(searchText)) {
             // 需要拼接查询条件
             queryWrapper.and(qw -> qw.like("title", searchText).or().like("content", searchText));
         }
-        // 模糊查询
-        queryWrapper.like(StringUtils.isNotBlank(title), "title", title);
-        queryWrapper.like(StringUtils.isNotBlank(content), "content", content);
-        // JSON 数组查询
-        if (CollUtil.isNotEmpty(tagList)) {
-            for (String tag : tagList) {
-                queryWrapper.like("tags", "\"" + tag + "\"");
-            }
-        }
         // 精确查询
         queryWrapper.ne(ObjectUtils.isNotEmpty(notId), "id", notId);
         queryWrapper.eq(ObjectUtils.isNotEmpty(id), "id", id);
         queryWrapper.eq(ObjectUtils.isNotEmpty(userId), "userId", userId);
+        queryWrapper.eq(ObjectUtils.isNotEmpty(questionBankId), "questionBankId", questionBankId);
+        queryWrapper.eq(ObjectUtils.isNotEmpty(questionId), "questionId", questionId);
         // 排序规则
         queryWrapper.orderBy(SqlUtils.validSortField(sortField),
                 sortOrder.equals(CommonConstant.SORT_ORDER_ASC),
@@ -174,6 +182,23 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
 
         questionBankQuestionVOPage.setRecords(questionBankQuestionVOList);
         return questionBankQuestionVOPage;
+    }
+
+    /**
+     * 用于删除题库题目关联
+     * @param questionBankId
+     * @param questionId
+     * @return
+     */
+    @Override
+    public Boolean removeQuestionBankQuestion(long questionBankId, long questionId){
+
+        LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
+                .eq(QuestionBankQuestion::getQuestionId, questionId)
+                .eq(QuestionBankQuestion::getQuestionBankId, questionBankId);
+        boolean result = this.remove(lambdaQueryWrapper);
+        return result;
+
     }
 
 }

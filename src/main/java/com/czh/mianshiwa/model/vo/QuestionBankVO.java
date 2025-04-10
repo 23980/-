@@ -1,6 +1,8 @@
 package com.czh.mianshiwa.model.vo;
 
 import cn.hutool.json.JSONUtil;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.czh.mianshiwa.model.entity.Question;
 import com.czh.mianshiwa.model.entity.QuestionBank;
 import lombok.Data;
 import org.springframework.beans.BeanUtils;
@@ -27,9 +29,16 @@ public class QuestionBankVO implements Serializable {
     private String title;
 
     /**
-     * 内容
+     * 描述
      */
-    private String content;
+    private String description;
+
+    /**
+     * 图片
+     */
+    private String picture;
+
+    private Page<Question> questionPage;
 
     /**
      * 创建用户 id
@@ -45,11 +54,6 @@ public class QuestionBankVO implements Serializable {
      * 更新时间
      */
     private Date updateTime;
-
-    /**
-     * 标签列表
-     */
-    private List<String> tagList;
 
     /**
      * 创建用户信息

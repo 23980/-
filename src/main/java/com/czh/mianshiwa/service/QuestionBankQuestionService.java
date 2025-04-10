@@ -48,4 +48,12 @@ public interface QuestionBankQuestionService extends IService<QuestionBankQuesti
      * @return
      */
     Page<QuestionBankQuestionVO> getQuestionBankQuestionVOPage(Page<QuestionBankQuestion> questionBankQuestionPage, HttpServletRequest request);
+
+    /**
+     * 用于删除题库题目关联
+     * @param questionBankId
+     * @param questionId
+     * @return
+     */
+    Boolean removeQuestionBankQuestion(long questionBankId, long questionId);
 }

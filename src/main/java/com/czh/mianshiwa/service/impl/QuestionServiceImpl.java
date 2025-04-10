@@ -1,7 +1,9 @@
 package com.czh.mianshiwa.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.czh.mianshiwa.common.ErrorCode;
@@ -10,9 +12,11 @@ import com.czh.mianshiwa.exception.ThrowUtils;
 import com.czh.mianshiwa.mapper.QuestionMapper;
 import com.czh.mianshiwa.model.dto.question.QuestionQueryRequest;
 import com.czh.mianshiwa.model.entity.Question;
+import com.czh.mianshiwa.model.entity.QuestionBankQuestion;
 import com.czh.mianshiwa.model.entity.User;
 import com.czh.mianshiwa.model.vo.QuestionVO;
 import com.czh.mianshiwa.model.vo.UserVO;
+import com.czh.mianshiwa.service.QuestionBankQuestionService;
 import com.czh.mianshiwa.service.QuestionService;
 import com.czh.mianshiwa.service.UserService;
 import com.czh.mianshiwa.utils.SqlUtils;
@@ -23,7 +27,6 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,7 +34,6 @@ import java.util.stream.Collectors;
 
 /**
  * 题目服务实现
- *
  */
 @Service
 @Slf4j
@@ -39,6 +41,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private QuestionBankQuestionService questionBankQuestionService;
 
     /**
      * 校验数据
@@ -62,6 +67,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         if (StringUtils.isNotBlank(title)) {
             ThrowUtils.throwIf(title.length() > 80, ErrorCode.PARAMS_ERROR, "标题过长");
         }
+        if (StringUtils.isNotBlank(content)) {
+            ThrowUtils.throwIf(content.length() > 10240, ErrorCode.PARAMS_ERROR, "标题过长");
+        }
 
     }
 
@@ -80,13 +88,15 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         // todo 从对象中取值
         Long id = questionQueryRequest.getId();
         Long notId = questionQueryRequest.getNotId();
+        String searchText = questionQueryRequest.getSearchText();
         String title = questionQueryRequest.getTitle();
         String content = questionQueryRequest.getContent();
-        String searchText = questionQueryRequest.getSearchText();
+        List<String> tagList = questionQueryRequest.getTags();
+        String answer = questionQueryRequest.getAnswer();
+        Long userId = questionQueryRequest.getUserId();
         String sortField = questionQueryRequest.getSortField();
         String sortOrder = questionQueryRequest.getSortOrder();
-        List<String> tagList = questionQueryRequest.getTags();
-        Long userId = questionQueryRequest.getUserId();
+
         // todo 补充需要的查询条件
         // 从多字段中搜索
         if (StringUtils.isNotBlank(searchText)) {
@@ -96,6 +106,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         // 模糊查询
         queryWrapper.like(StringUtils.isNotBlank(title), "title", title);
         queryWrapper.like(StringUtils.isNotBlank(content), "content", content);
+        queryWrapper.like(StringUtils.isNotBlank(answer), "answer", answer);
         // JSON 数组查询
         if (CollUtil.isNotEmpty(tagList)) {
             for (String tag : tagList) {
@@ -178,6 +189,41 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
         questionVOPage.setRecords(questionVOList);
         return questionVOPage;
+    }
+
+    /**
+     * 分页获取题目列表（仅管理员可用）
+     *
+     * @param questionQueryRequest
+     * @return
+     */
+    @Override
+    public Page<Question> listQuestionByPage(QuestionQueryRequest questionQueryRequest) {
+        long current = questionQueryRequest.getCurrent();
+        long size = questionQueryRequest.getPageSize();
+        //获取题库id
+        Long questionBankId = questionQueryRequest.getQuestionBankId();
+        // 构造题目查询条件
+        QueryWrapper<Question> queryWrapper = this.getQueryWrapper(questionQueryRequest);
+        // 题库id不为空，则查询该题库下的题目id（只查询题目id，提升性能）
+        if (questionBankId != null) {
+            //构造根据题库id查询所有的题目id的查询条件
+            LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
+                    .select(QuestionBankQuestion::getQuestionId)
+                    .eq(QuestionBankQuestion::getQuestionBankId, questionBankId);
+            // 根据查询条件查询所有题目
+            List<QuestionBankQuestion> questionList = questionBankQuestionService.list(lambdaQueryWrapper);
+            if (CollUtil.isNotEmpty(questionList)) {
+                //将题目通过stream流转为id集合
+                Set<Long> questionIdSet = questionList.stream().map(QuestionBankQuestion::getQuestionId).collect(Collectors.toSet());
+                //将id集合作为in查询条件
+                queryWrapper.in("id", questionIdSet);
+            }
+        }
+        // 查询数据库
+        Page<Question> questionPage = this.page(new Page<>(current, size),
+                queryWrapper);
+        return questionPage;
     }
 
 }
