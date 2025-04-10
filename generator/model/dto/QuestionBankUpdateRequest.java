@@ -1,4 +1,4 @@
-package com.czh.mianshiwa.model.dto.questionBank;
+package com.czh.mianshiha.model.dto.questionBank;
 
 import lombok.Data;
 

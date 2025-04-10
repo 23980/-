@@ -1,11 +1,11 @@
-package com.czh.mianshiwa.service;
+package com.czh.mianshiha.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.czh.mianshiwa.model.dto.questionBankQuestion.QuestionBankQuestionQueryRequest;
-import com.czh.mianshiwa.model.entity.QuestionBankQuestion;
-import com.czh.mianshiwa.model.vo.QuestionBankQuestionVO;
+import com.czh.mianshiha.model.dto.questionBankQuestion.QuestionBankQuestionQueryRequest;
+import com.czh.mianshiha.model.entity.QuestionBankQuestion;
+import com.czh.mianshiha.model.vo.QuestionBankQuestionVO;
 
 import javax.servlet.http.HttpServletRequest;
 

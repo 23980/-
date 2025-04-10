@@ -1,7 +1,7 @@
-package com.czh.mianshiwa.model.vo;
+package com.czh.mianshiha.model.vo;
 
 import cn.hutool.json.JSONUtil;
-import com.czh.mianshiwa.model.entity.QuestionBankQuestion;
+import com.czh.mianshiha.model.entity.QuestionBankQuestion;
 import lombok.Data;
 import org.springframework.beans.BeanUtils;
 

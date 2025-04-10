@@ -1,6 +1,6 @@
-package com.czh.mianshiwa.model.dto.question;
+package com.czh.mianshiha.model.dto.question;
 
-import com.czh.mianshiwa.common.PageRequest;
+import com.czh.mianshiha.common.PageRequest;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
