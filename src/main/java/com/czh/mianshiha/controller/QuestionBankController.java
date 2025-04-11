@@ -142,6 +142,7 @@ public class QuestionBankController {
      */
     @GetMapping("/get/vo")
     public BaseResponse<QuestionBankVO> getQuestionBankVOById(QuestionBankQueryRequest questionBankQueryRequest,HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBankQueryRequest == null, ErrorCode.PARAMS_ERROR);
         Long id = questionBankQueryRequest.getId();
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
         // 查询数据库
@@ -151,9 +152,12 @@ public class QuestionBankController {
         boolean needQueryQuestionList = questionBankQueryRequest.isNeedQueryQuestionList();
         //判断是否需要查询题目列表
         if (needQueryQuestionList){
-            QuestionQueryRequest queryQueryRequest = new QuestionQueryRequest();
-            queryQueryRequest.setQuestionBankId(id);
-            Page<Question> questionPage = questionService.listQuestionByPage(queryQueryRequest);
+            QuestionQueryRequest questionQueryRequest = new QuestionQueryRequest();
+            questionQueryRequest.setQuestionBankId(id);
+            // 可以按需传递更多参数
+            questionQueryRequest.setPageSize(questionBankQueryRequest.getPageSize());
+            questionQueryRequest.setCurrent(questionBankQueryRequest.getCurrent());
+            Page<Question> questionPage = questionService.listQuestionByPage(questionQueryRequest);
             questionBankVO.setQuestionPage(questionPage);
         }
         // 获取封装类

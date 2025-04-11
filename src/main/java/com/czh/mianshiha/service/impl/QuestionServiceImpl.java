@@ -218,6 +218,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 Set<Long> questionIdSet = questionList.stream().map(QuestionBankQuestion::getQuestionId).collect(Collectors.toSet());
                 //将id集合作为in查询条件
                 queryWrapper.in("id", questionIdSet);
+            }else {
+                //如果题库下没有题目，则返回空的分页对象
+                return new Page<>(current, size, 0);
             }
         }
         // 查询数据库
