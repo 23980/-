@@ -1,20 +1,24 @@
 package com.czh.mianshiha.job.cycle;
 
+import com.czh.mianshiha.constant.RedisConstant;
 import com.czh.mianshiha.esdao.PostEsDao;
 import com.czh.mianshiha.mapper.PostMapper;
 import com.czh.mianshiha.model.dto.post.PostEsDTO;
 import com.czh.mianshiha.model.entity.Post;
+
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.annotation.Resource;
+
+import io.lettuce.core.RedisClient;
 import lombok.extern.slf4j.Slf4j;
 import cn.hutool.core.collection.CollUtil;
 import org.springframework.scheduling.annotation.Scheduled;
 
 /**
  * 增量同步帖子到 es
- * 
  */
 // todo 取消注释开启任务
 //@Component
@@ -27,11 +31,16 @@ public class IncSyncPostToEs {
     @Resource
     private PostEsDao postEsDao;
 
+    @Resource
+    private RedisClient redisClient;
+
     /**
      * 每分钟执行一次
      */
-    @Scheduled(fixedRate = 60 * 1000)
+    @Scheduled(cron = "* 5 0 1 1 ? ")
     public void run() {
+        //
+        int lastYear = LocalDate.now().getYear() - 1;
         // 查询近 5 分钟内的数据
         Date fiveMinutesAgoDate = new Date(new Date().getTime() - 5 * 60 * 1000L);
         List<Post> postList = postMapper.listPostWithDelete(fiveMinutesAgoDate);

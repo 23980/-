@@ -1,5 +1,6 @@
 package com.czh.mianshiha.service.impl;
 
+import static com.czh.mianshiha.constant.RedisConstant.getUserSignInRedisKey;
 import static com.czh.mianshiha.constant.UserConstant.USER_LOGIN_STATE;
 
 import cn.hutool.core.collection.CollUtil;
@@ -16,25 +17,35 @@ import com.czh.mianshiha.model.vo.LoginUserVO;
 import com.czh.mianshiha.model.vo.UserVO;
 import com.czh.mianshiha.service.UserService;
 import com.czh.mianshiha.utils.SqlUtils;
-import java.util.ArrayList;
-import java.util.List;
+
+import java.time.LocalDate;
+import java.time.Year;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.bean.WxOAuth2UserInfo;
 import org.apache.commons.lang3.StringUtils;
+import org.redisson.Redisson;
+import org.redisson.api.RBitSet;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 /**
  * 用户服务实现
- * 
  */
 @Service
 @Slf4j
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
+
+    @Resource
+    private RedissonClient redissonClient;
     /**
      * 盐值，混淆密码
      */
@@ -266,5 +277,58 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         queryWrapper.orderBy(SqlUtils.validSortField(sortField), sortOrder.equals(CommonConstant.SORT_ORDER_ASC),
                 sortField);
         return queryWrapper;
+    }
+
+    /**
+     * 添加用户签到记录
+     *
+     * @param userId 用户签到
+     * @return 当前是否已签到成功
+     */
+    @Override
+    public boolean addUserSignIn(long userId) {
+        //获取当前时间
+        LocalDate date = LocalDate.now();
+        //设置redis key
+        String key = getUserSignInRedisKey(date.getYear(), userId);
+        //获取redis bitset
+        RBitSet signInBitSet = redissonClient.getBitSet(key);
+        ///获取当前日期是一年的第几天，作为偏移量（从1开始计数）
+        int offset = date.getDayOfYear();
+        //判断当天是否已签到
+        if (!signInBitSet.get(offset)) {
+            //当天未签到，设置
+            signInBitSet.set(offset, true);
+            signInBitSet.expire(800, TimeUnit.DAYS);
+        }
+        //当天已签到
+        return true;
+    }
+
+    /**
+     * 获取用户签到记录
+     *
+     * @param year   年份（为空表示当前年份）
+     * @param userId 用户id
+     * @return 签到记录映射
+     */
+    @Override
+    public List<Integer> getUserSignInRecord(long userId, Integer year) {
+        if (year == null) {
+            LocalDate date = LocalDate.now();
+            year = date.getYear();
+        }
+        String userSignInRedisKey = getUserSignInRedisKey(year, userId);
+        RBitSet signInBitSet = redissonClient.getBitSet(userSignInRedisKey);
+        // 加载 BitSet 到内存中，避免后续读取时发送多次请求
+        BitSet bitSet = signInBitSet.asBitSet();
+        // 统计签到的日期
+        List<Integer> dayList = new ArrayList<>();
+        int index = bitSet.nextSetBit(0);
+        while (index >= 0) {
+            dayList.add(index);
+            index = bitSet.nextSetBit(index + 1);
+        }
+        return dayList;
     }
 }

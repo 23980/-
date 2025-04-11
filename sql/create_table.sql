@@ -71,3 +71,14 @@ create table if not exists question_bank_question
     UNIQUE (questionBankId, questionId)
 ) comment '题库题目' collate = utf8mb4_unicode_ci;
 
+CREATE TABLE user_sign_in_record (
+                                     id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                                     user_id BIGINT NOT NULL COMMENT '用户ID',
+                                     year INT NOT NULL COMMENT '年份',
+                                     sign_days VARCHAR(500) NOT NULL COMMENT '签到日期（逗号分隔的年内第几天）',
+                                     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                     INDEX idx_user_year (user_id, year)
+) COMMENT '用户签到记录归档表';
+
+create unique index idx_userId_year
+    on user_sign_in_record (user_id, year);
