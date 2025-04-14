@@ -54,4 +54,12 @@ public interface QuestionService extends IService<Question> {
      * 分页获取题目列表（仅管理员可用）
      */
     Page<Question> listQuestionByPage(QuestionQueryRequest questionQueryRequest);
+
+    /**
+     * 从 ES 查询题目
+     *
+     * @param questionQueryRequest
+     * @return
+     */
+    Page<Question> searchFromEs(QuestionQueryRequest questionQueryRequest);
 }
